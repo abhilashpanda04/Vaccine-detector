@@ -17,8 +17,9 @@ if choose == 'By States':
 
 
     states_request = requests.get("https://cdn-api.co-vin.in/api/v2/admin/location/states")
-    states_codec=json.loads(states_request)
-    states_codec
+    states_request
+#     states_codec=json.loads(states_request)
+#     states_codec
 #     states=pd.json_normalize(states_codec["states"])
 
 
