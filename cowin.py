@@ -14,7 +14,6 @@ choose=st.radio('Please choose a method', ['By States','By Pincode'])
 if choose == 'By States':
 
     states_codec = cowin.get_states()
-    st.write(states_codec)
     states=pd.json_normalize(states_codec["states"])
     # states=pd.read_csv("states.csv")
 
