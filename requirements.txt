@@ -1,4 +1,4 @@
-streamlit
-cowin
-pandas
-requests
+streamlit==0.81.0
+cowin==0.0.4
+pandas==1.2.0
+
