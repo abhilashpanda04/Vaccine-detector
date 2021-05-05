@@ -1,21 +1,24 @@
 ##Vaccine Tracker app
 
+
 import streamlit as st
 import datetime
-from cowin_api import CoWinAPI
 import pandas as pd
+import requests
+import json
 
 st.title('Vaccine Tracker')
 
-cowin = CoWinAPI()
+st.components.v1.iframe("https://www.ris.world/wp-content/uploads/2020/12/COVID-19-Vaccine-Tracker-500x300-1.jpg",height=400)
 
 choose=st.radio('Please choose a method', ['By States','By Pincode'])
 
 if choose == 'By States':
 
-    states_codec = cowin.get_states()
+
+    states_request = requests.get("https://cdn-api.co-vin.in/api/v2/admin/location/states")
+    states_codec=json.loads(states_request.text)
     states=pd.json_normalize(states_codec["states"])
-    # states=pd.read_csv("states.csv")
 
 
     mapping_dict = pd.Series(states["state_id"].values,index = states["state_name"].values).to_dict()
@@ -27,9 +30,10 @@ if choose == 'By States':
     state=st.selectbox('states',unique_state)
 
 
-    districts = cowin.get_districts(mapping_dict[state])
 
-    # districts
+    districts_requests=requests.get("https://cdn-api.co-vin.in/api/v2/admin/location/districts/{}".format(mapping_dict[state]))
+    districts=json.loads(districts_requests.text)
+
 
     districts_codec=pd.json_normalize(districts["districts"])
 
@@ -47,20 +51,40 @@ if choose == 'By States':
 
 
     district_id = mapping_dict[districts]
-    date, min_age_limit='18'
-    available = cowin.get_availability_by_district(district_id, date_input, min_age_limit)
-    available_centers=pd.json_normalize(available["centers"])
-    st.write(available_centers)
+    try:
+        URL=requests.get("https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id={}&date={}".format(district_id, date_input))
+        available=json.loads(URL.text)
+        # available = cowin.get_availability_by_pincode(pin_code, date_input, min_age_limit)
+        available_centers=pd.json_normalize(available["centers"],max_level=0)
+        available_centers_org=available_centers.drop("sessions",axis=1)
+        session=available_centers["sessions"]
+        available_sessions=pd.DataFrame([i[0] for i in session])
+        available_sessions_org=available_sessions.drop(["session_id","slots"],axis=1)
+        final=pd.concat([available_centers_org,available_sessions_org],axis=1)
+        st.table(final)
+    except:
+        st.info("Vaccine slot Not available for now,Try seatching another date")
+
 
 if choose == 'By Pincode':
-    min_age_limit = 18
-    pin_codec=pd.read_csv("pincode.csv")
-    pin = list(pin_codec["Pincode"].unique())
-    pin_code=st.selectbox('pincode',pin)
-    date=st.date_input('Date input',datetime.datetime.today())
-    date_input=date.strftime("%d-%m-%Y")
-
-
-    available = cowin.get_availability_by_pincode(pin_code, date_input, min_age_limit)
-    available_centers=pd.json_normalize(available["centers"])
-    st.write(available_centers)
+    # min_age_limit = 18
+    try:
+        pin_codec=pd.read_csv("pincode.csv")
+        pin = list(pin_codec["Pincode"].unique())
+        pin_code=st.selectbox('pincode',pin)
+        date=st.date_input('Date input',datetime.datetime.today())
+        date_input=date.strftime("%d-%m-%Y")
+        # pin_code = "400080"
+        # date_input = '03-05-2021'
+        available_json = requests.get("https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin?pincode={}&date={}".format(pin_code, date_input))
+        available=json.loads(available_json.text)
+        # available = cowin.get_availability_by_pincode(pin_code, date_input, min_age_limit)
+        available_centers=pd.json_normalize(available["centers"],max_level=0)
+        available_centers_org=available_centers.drop("sessions",axis=1)
+        session=available_centers["sessions"]
+        available_sessions=pd.DataFrame([i[0] for i in session])
+        available_sessions_org=available_sessions.drop(["session_id","slots"],axis=1)
+        final=pd.concat([available_centers_org,available_sessions_org],axis=1)
+        st.table(final)
+    except:
+        st.info("Vaccine slot Not available, Try seatching another date")
